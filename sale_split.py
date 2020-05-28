@@ -20,6 +20,10 @@ class Statement:
         self.subscription_a, self.subscription_b = 0, 0
         self.reserve_total, self.reserve_a, self.reserve_b = 0, 0, 0
         self.advertise_a, self.advertise_b = 0, 0
+        self.credit_a, self.credit_b = 0, 0
+        self.get_statement_basics(file_name)
+        self.borrow_a, self.borrow_b = 0, 0
+        self.calculated = 0
 
     def handle_sales_by_sku(self, sku_str: str, amount: Decimal):
         if sku_str.startswith('mb'):
@@ -69,16 +73,73 @@ class Statement:
         :param amt:
         :return:
         """
-        self.advertise_b = amt
+        self.advertise_a = amt / 2
+        self.advertise_b = amt / 2
 
     def __str__(self):
         return
         # return f"money a: {self.money_a}, money b: {self.money_b}, " \
         #        f"reserve_a: {self.next_resv_a}, reserve_b: {self.next_resv_b}"
 
+    @property
+    def basic_info(self):
+        return {
+            "record_id": self.record_id,
+            "calculated": self.calculated,
+            "sales_a": self.sales_a,
+            "sales_b": self.sales_b,
+            "storage_a": self.storage_a,
+            "storage_b": self.storage_b,
+            "subscription_a": self.subscription_a,
+            "subscription_b": self.subscription_b,
+            "advertise_a": self.advertise_a,
+            "advertise_b": self.advertise_b,
+            "credit_a": self.credit_a,
+            "credit_b": self.credit_b,
+            "reserve_a": self.reserve_a,
+            "reserve_b": self.reserve_b,
+        }
+
+    def chain(self, next_statement):
+        self.next = next_statement
+        next_statement.recalc(self)
+
+    def recalc(self, prev_resv):
+        """
+        prev_resv: can be a Statement instance or a tuple like (reserve_a,
+        reserve_b)
+        """
+        self.calculated = 1
+        if isinstance(prev_resv, self.__class__):
+            last_resv_a = prev_resv.reserve_a
+            last_resv_b = prev_resv.reserve_b
+        else:
+            assert isinstance(prev_resv, tuple)
+            last_resv_a, last_resv_b = prev_resv
+
+        self.credit_a = self.sales_a + self.storage_a + self.subscription_a \
+                + self.advertise_a - last_resv_a
+        self.credit_b = self.sales_b + self.storage_b + self.subscription_b \
+                + self.advertise_b - last_resv_b
+
+        if self.credit_a <= 0 and self.credit_b <= 0:
+            return
+
+        elif self.credit_a <= 0 and self.credit_b > 0:
+            self.reserve_b = self.reserve_total
+        elif self.credit_b <= 0 and self.credit_a > 0:
+            self.reserve_a = self.reserve_total
+        else:
+            self.reserve_a = self.reserve_total * self.credit_a / (self.credit_a + self.credit_b)
+            self.reserve_b = self.reserve_total * self.credit_b / (self.credit_a + self.credit_b)
+            self.credit_a += self.reserve_a
+            self.credit_b += self.reserve_b
+
 
 if __name__ == "__main__":
-    pass
-    # s1 = Statement(r"sale_sources/20200119_20200202.txt", (0, 165.38))
-    # print(s1)
+    s1 = Statement(r"sale_sources/20200119_20200202.txt")
+    s1.recalc((0, -Decimal(165.38)))
+
+    import pprint
+    pprint.pprint(s1.basic_info)
 
