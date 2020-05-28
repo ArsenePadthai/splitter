@@ -1,4 +1,7 @@
 import csv
+import sys
+from os import listdir
+from os.path import isfile, join
 from decimal import Decimal
 
 '''
@@ -15,6 +18,8 @@ class PartyInfo:
 class Statement:
     def __init__(self, file_name):
         self.record_id = file_name[:-4]
+        self.head_id = file_name[:8]
+        self.tail_id = file_name[8:-4]
         self.sales_a, self.sales_b = 0, 0
         self.storage_a, self.storage_b = 0, 0
         self.subscription_a, self.subscription_b = 0, 0
@@ -23,6 +28,7 @@ class Statement:
         self.credit_a, self.credit_b = 0, 0
         self.get_statement_basics(file_name)
         self.borrow_a, self.borrow_b = 0, 0
+        self.next = None
         self.calculated = 0
 
     def handle_sales_by_sku(self, sku_str: str, amount: Decimal):
@@ -136,10 +142,22 @@ class Statement:
             self.credit_b += self.reserve_b
 
 
-if __name__ == "__main__":
-    s1 = Statement(r"sale_sources/20200119_20200202.txt")
-    s1.recalc((0, -Decimal(165.38)))
+def generate_statement_list(dst, prev):
+    fs = [f for f in listdir(dst) if isfile(join(dst, f))]
+    fs = sorted(fs)
+    naive_statements = [Statement(join(dst, i)) for i in fs]
+    s1 = naive_statements[0]
+    s1.recalc(prev)
 
-    import pprint
-    pprint.pprint(s1.basic_info)
+
+    print(fs)
+
+
+if __name__ == "__main__":
+    # s1 = Statement(r"sale_sources/20200119_20200202.txt")
+    # s1.recalc((0, -Decimal(165.38)))
+    #
+    # import pprint
+    # pprint.pprint(s1.basic_info)
+    generate_statement_list('sale_sources', 998)
 
