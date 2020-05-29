@@ -1,4 +1,5 @@
 import csv
+import pprint
 import sys
 from os import listdir
 from os.path import isfile, join
@@ -144,20 +145,20 @@ class Statement:
 
 def generate_statement_list(dst, prev):
     fs = [f for f in listdir(dst) if isfile(join(dst, f))]
-    fs = sorted(fs)
-    naive_statements = [Statement(join(dst, i)) for i in fs]
-    s1 = naive_statements[0]
-    s1.recalc(prev)
-
-
-    print(fs)
+    naive_statements = [Statement(join(dst, i)) for i in sorted(fs)]
+    head = naive_statements[0]
+    head.recalc(prev)
+    pointer = s1
+    for j in naive_statements[1:]:
+        pointer.chain(j)
+        pointer = j
+    return head
 
 
 if __name__ == "__main__":
-    # s1 = Statement(r"sale_sources/20200119_20200202.txt")
-    # s1.recalc((0, -Decimal(165.38)))
-    #
-    # import pprint
-    # pprint.pprint(s1.basic_info)
-    generate_statement_list('sale_sources', 998)
+    head = generate_statement_list('sale_sources', (0, -Decimal(165.38)))
+    s = head
+    while s:
+        pprint.pprint(s.basic_info)
+        s = s.next
 
